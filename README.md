@@ -19,6 +19,7 @@ egrep -v "^[^0-9]*$|[A-Z]"
 ```
 * The results for each letter were concatenated into a single file.
 
+---
 
 ![](https://i.creativecommons.org/l/by/3.0/88x31.png)
 
