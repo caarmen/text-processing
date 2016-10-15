@@ -1,6 +1,6 @@
 This repository will hold tools or resources useful (to me at least :) ) for text processing.
 
-Currently it contains a list of word frequencies. The data was obtained from the [Google Ngram dataset] ( http://storage.googleapis.com/books/ngrams/books/datasetsv2.html)
+Currently it contains a list of word frequencies. The data was obtained from the [Google Ngram dataset]( http://storage.googleapis.com/books/ngrams/books/datasetsv2.html).
 
 The specific data used here comes from the set of English 1-grams from 2012-07-01, with the following cleanup:
 
