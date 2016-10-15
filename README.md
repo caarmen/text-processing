@@ -15,7 +15,7 @@ grep "^[a-z]*.2008" |sed -e 's/2008.\([0-9]*\)[^0-9].*$/\1/g'
 ```
 * Some remaining noise was further removed with this filter:
 ```
-egrep -v "^[^0-9]*$|[A-Z]"
+egrep  "\t"
 ```
 * The results for each letter were concatenated into a single file.
 
