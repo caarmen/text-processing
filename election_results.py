@@ -94,12 +94,21 @@ def write_output(election_result, output_file):
     row += 2
     total_cols = col + 4
     bottom_total_style = get_bottom_total_style()
-    sheet.write(row, 0, "Total:", bottom_total_style)
+    sheet.write(row, 0, "Total (votes):", bottom_total_style)
     sheet.write(row, 1, "", bottom_total_style)
     for col in range(2, total_cols + 1):
         total_cell_start = xlwt.Utils.rowcol_to_cell(1, col)
         total_cell_end = xlwt.Utils.rowcol_to_cell(row - 1, col)
         sheet.write(row, col, xlwt.Formula("sum(%s:%s)" % (total_cell_start, total_cell_end)), bottom_total_style)
+
+    cell_total_all_votes = xlwt.Utils.rowcol_to_cell(row, total_cols)
+    row += 1
+    sheet.write(row, 0, "Total (%):")
+    pct_style = get_pct_style()
+    for col in range(3, total_cols + 1):
+        total_cell_start = xlwt.Utils.rowcol_to_cell(row - 1, col)
+        sheet.write(row, col, xlwt.Formula("%s/%s" %(total_cell_start, cell_total_all_votes)), pct_style)
+
     book.save(output_file)
     print("Wrote results to %s" % output_file)
 
@@ -108,10 +117,17 @@ def get_num_style():
     """
     :rtype: XFStyle
     """
-    num_style = XFStyle()
-    num_style.num_format_str = "#,##0"
-    return num_style
+    style = XFStyle()
+    style.num_format_str = "#,##0"
+    return style
 
+def get_pct_style():
+    """
+    :rtype: XFStyle
+    """
+    style = XFStyle()
+    style.num_format_str = "0.00%"
+    return style
 
 def get_bottom_total_style():
     """
