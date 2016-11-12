@@ -3,6 +3,8 @@ import sys
 from collections import namedtuple
 from bs4 import BeautifulSoup
 import xlwt
+from xlwt import XFStyle
+from xlwt import Utils
 
 StateResult = namedtuple("StateResult", ["reporting", "electoral_votes", "popular_votes_per_candidate"])
 ElectionResult = namedtuple("ElectionResult", ["candidates", "results_per_state"])
@@ -56,30 +58,129 @@ def write_output(election_result, output_file):
     :param output_file: the path to an excel file where the results will be written.
     """
     book = xlwt.Workbook()
+
+    num_style = get_num_style()
+    right_total_style = get_right_total_style()
+    border_bottom_style = get_border_bottom_style()
+    border_right_style = get_border_right_style()
+
     sheet = book.add_sheet("2016 results")
     sheet.set_panes_frozen(True)
     sheet.set_horz_split_pos(1)
     sheet.set_vert_split_pos(3)
-    sheet.write(0, 0, "State")
-    sheet.write(0, 1, "Reporting")
-    sheet.write(0, 2, "Electoral Votes")
+    sheet.write(0, 0, "State", border_bottom_style)
+    sheet.write(0, 1, "Reporting", border_bottom_style)
+    sheet.write(0, 2, "Electoral Votes", get_border_bottom_right_style())
 
     for col, candidate in enumerate(election_result.candidates):
-        sheet.write(0, col + 3, candidate)
+        sheet.write(0, col + 3, candidate, border_bottom_style)
+    sheet.write(0, col + 4, "Total", get_border_bottom_left_style())
 
     for row, state_id in enumerate(sorted(election_result.results_per_state)):
         sheet.write(row + 1, 0, state_id)
         state_result = election_result.results_per_state[state_id]
         sheet.write(row + 1, 1, float(state_result.reporting))
-        sheet.write(row + 1, 2, int(state_result.electoral_votes))
+        sheet.write(row + 1, 2, int(state_result.electoral_votes), border_right_style)
         for col, candidate in enumerate(election_result.candidates):
             popular_vote = state_result.popular_votes_per_candidate.get(candidate)
             if popular_vote:
-                popular_vote = int(popular_vote.replace(",",""))
-            sheet.write(row + 1, col + 3, popular_vote)
+                popular_vote = int(popular_vote.replace(",", ""))
+            sheet.write(row + 1, col + 3, popular_vote, num_style)
+        total_cell_start = xlwt.Utils.rowcol_to_cell(row + 1, 3)
+        total_cell_end = xlwt.Utils.rowcol_to_cell(row + 1, col + 3)
+        sheet.write(row + 1, col + 4, xlwt.Formula("sum(%s:%s)" % (total_cell_start, total_cell_end)),
+                    right_total_style)
 
+    row += 2
+    total_cols = col + 4
+    bottom_total_style = get_bottom_total_style()
+    sheet.write(row, 0, "Total:", bottom_total_style)
+    sheet.write(row, 1, "", bottom_total_style)
+    for col in range(2, total_cols + 1):
+        total_cell_start = xlwt.Utils.rowcol_to_cell(1, col)
+        total_cell_end = xlwt.Utils.rowcol_to_cell(row - 1, col)
+        sheet.write(row, col, xlwt.Formula("sum(%s:%s)" % (total_cell_start, total_cell_end)), bottom_total_style)
     book.save(output_file)
     print("Wrote results to %s" % output_file)
+
+
+def get_num_style():
+    """
+    :rtype: XFStyle
+    """
+    num_style = XFStyle()
+    num_style.num_format_str = "#,##0"
+    return num_style
+
+
+def get_bottom_total_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.top = xlwt.Borders.DOUBLE
+    style = XFStyle()
+    style.borders = borders
+    style.num_format_str = get_num_style().num_format_str
+    return style
+
+
+def get_right_total_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.left = xlwt.Borders.DOUBLE
+    style = XFStyle()
+    style.borders = borders
+    style.num_format_str = get_num_style().num_format_str
+    return style
+
+
+def get_border_right_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.right = xlwt.Borders.HAIR
+    style = XFStyle()
+    style.borders = borders
+    return style
+
+
+def get_border_bottom_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.bottom = xlwt.Borders.HAIR
+    style = XFStyle()
+    style.borders = borders
+    return style
+
+
+def get_border_bottom_right_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.bottom = xlwt.Borders.HAIR
+    borders.right = xlwt.Borders.HAIR
+    style = XFStyle()
+    style.borders = borders
+    return style
+
+
+def get_border_bottom_left_style():
+    """
+    :rtype: XFStyle
+    """
+    borders = xlwt.Borders()
+    borders.bottom = xlwt.Borders.HAIR
+    borders.left = xlwt.Borders.DOUBLE
+    style = XFStyle()
+    style.borders = borders
+    return style
 
 
 if __name__ == "__main__":
