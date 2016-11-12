@@ -70,10 +70,12 @@ def write_output(election_result, output_file):
     for row, state_id in enumerate(sorted(election_result.results_per_state)):
         sheet.write(row + 1, 0, state_id)
         state_result = election_result.results_per_state[state_id]
-        sheet.write(row + 1, 1, state_result.reporting)
-        sheet.write(row + 1, 2, state_result.electoral_votes)
+        sheet.write(row + 1, 1, float(state_result.reporting))
+        sheet.write(row + 1, 2, int(state_result.electoral_votes))
         for col, candidate in enumerate(election_result.candidates):
-            popular_vote = state_result.popular_votes_per_candidate.get(candidate) or ""
+            popular_vote = state_result.popular_votes_per_candidate.get(candidate)
+            if popular_vote:
+                popular_vote = int(popular_vote.replace(",",""))
             sheet.write(row + 1, col + 3, popular_vote)
 
     book.save(output_file)
