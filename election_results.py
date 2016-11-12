@@ -7,7 +7,7 @@ from xlwt import XFStyle
 from xlwt import Utils
 
 StateResult = namedtuple("StateResult", ["reporting", "electoral_votes", "popular_votes_per_candidate"])
-ElectionResult = namedtuple("ElectionResult", ["candidates", "results_per_state"])
+ElectionResult = namedtuple("ElectionResult", ["candidates", "results_per_state", "votes_per_candidate", "total_votes"])
 
 
 def main(args):
@@ -27,6 +27,8 @@ def read_input(input_file):
     articles = soup.find_all("article", id=re.compile("state[A-Z][A-Z]"))
     results_per_state = {}
     candidates = set([])
+    total_votes = 0
+    votes_per_candidate = {}
     for article in articles:
         popular_votes_per_candidate = {}
         state_id = article["id"].replace("state", "")
@@ -44,11 +46,15 @@ def read_input(input_file):
                                  .text \
                                  .replace("Winner ", "")[2:]
             candidates.add(candidate_name)
-            popular_vote = results_candidate.select('td[class="results-popular"]')[0].text
+            popular_vote = int(results_candidate.select('td[class="results-popular"]')[0].text.replace(",", ""))
             popular_votes_per_candidate[candidate_name] = popular_vote
+            total_votes += popular_vote
+            accumulated_votes_this_candidate = votes_per_candidate.get(candidate_name) or 0
+            accumulated_votes_this_candidate += popular_vote
+            votes_per_candidate[candidate_name] = accumulated_votes_this_candidate
 
         results_per_state[state_id] = StateResult(reporting, electoral_votes, popular_votes_per_candidate)
-    return ElectionResult(sorted(candidates), results_per_state)
+    return ElectionResult(sorted(candidates), results_per_state, votes_per_candidate, total_votes)
 
 
 def write_output(election_result, output_file):
@@ -72,10 +78,16 @@ def write_output(election_result, output_file):
     sheet.write(0, 1, "Reporting", border_bottom_style)
     sheet.write(0, 2, "Electoral Votes", get_border_bottom_right_style())
 
+    min_pct_vote_for_visbility = 0.005
+    # column headings
     for col, candidate in enumerate(election_result.candidates):
         sheet.write(0, col + 3, candidate, border_bottom_style)
+        # hide candidates with few votes
+        if election_result.votes_per_candidate[candidate] / election_result.total_votes < min_pct_vote_for_visbility:
+            sheet.col(col + 3).hidden = True
     sheet.write(0, col + 4, "Total", get_border_bottom_left_style())
 
+    # votes per candidate per state
     for row, state_id in enumerate(sorted(election_result.results_per_state)):
         sheet.write(row + 1, 0, state_id)
         state_result = election_result.results_per_state[state_id]
@@ -84,13 +96,14 @@ def write_output(election_result, output_file):
         for col, candidate in enumerate(election_result.candidates):
             popular_vote = state_result.popular_votes_per_candidate.get(candidate)
             if popular_vote:
-                popular_vote = int(popular_vote.replace(",", ""))
+                popular_vote = int(popular_vote)
             sheet.write(row + 1, col + 3, popular_vote, num_style)
         total_cell_start = xlwt.Utils.rowcol_to_cell(row + 1, 3)
         total_cell_end = xlwt.Utils.rowcol_to_cell(row + 1, col + 3)
         sheet.write(row + 1, col + 4, xlwt.Formula("sum(%s:%s)" % (total_cell_start, total_cell_end)),
                     right_total_style)
 
+    # total votes per candidate
     row += 2
     total_cols = col + 4
     bottom_total_style = get_bottom_total_style()
@@ -101,13 +114,14 @@ def write_output(election_result, output_file):
         total_cell_end = xlwt.Utils.rowcol_to_cell(row - 1, col)
         sheet.write(row, col, xlwt.Formula("sum(%s:%s)" % (total_cell_start, total_cell_end)), bottom_total_style)
 
+    # percentage of votes per candidate
     cell_total_all_votes = xlwt.Utils.rowcol_to_cell(row, total_cols)
     row += 1
     sheet.write(row, 0, "Total (%):")
     pct_style = get_pct_style()
     for col in range(3, total_cols + 1):
         total_cell_start = xlwt.Utils.rowcol_to_cell(row - 1, col)
-        sheet.write(row, col, xlwt.Formula("%s/%s" %(total_cell_start, cell_total_all_votes)), pct_style)
+        sheet.write(row, col, xlwt.Formula("%s/%s" % (total_cell_start, cell_total_all_votes)), pct_style)
 
     book.save(output_file)
     print("Wrote results to %s" % output_file)
@@ -121,6 +135,7 @@ def get_num_style():
     style.num_format_str = "#,##0"
     return style
 
+
 def get_pct_style():
     """
     :rtype: XFStyle
@@ -128,6 +143,7 @@ def get_pct_style():
     style = XFStyle()
     style.num_format_str = "0.00%"
     return style
+
 
 def get_bottom_total_style():
     """
